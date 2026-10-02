@@ -358,7 +358,7 @@ CI (GitHub Actions): install → typecheck → lint → unit → integration (Po
 - `deploy/bootstrap-ec2.sh`: install Docker + compose plugin, add 2 GB swap, create app dir, write `.env` from prompts.
 - `deploy/deploy.sh`: `docker compose pull && docker compose up -d`, then `curl /api/health`.
 - EC2 `t3.small`, Elastic IP, security group: 80/443 open, 22 from owner IP only.
-- Secrets only in server `.env`; `.env.example` lists names: `DATABASE_URL`, `GEMINI_API_KEY`, `GEMINI_MODEL`, `AGENT_DAILY_CAP`, `AGENT_RATE_PER_10MIN`, `LOG_LEVEL`, `DOMAIN`, `MAX_SOURCE_RECORDS`.
+- Secrets only in server `.env`; `.env.example` lists names: `DATABASE_URL`, `GEMINI_API_KEY`, `GEMINI_MODEL`, `AGENT_DAILY_CAP`, `AGENT_RATE_PER_10MIN`, `LLM_PROVIDER`, `LOG_LEVEL`, `DOMAIN`, `POSTGRES_PASSWORD`, `APP_IMAGE` (the 500-record cap is the constant `MAX_SOURCE_RECORDS`).
 
 ## 15. Documentation deliverables
 
