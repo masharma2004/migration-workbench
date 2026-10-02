@@ -1,0 +1,18 @@
+# Agent Usage Log
+
+Running log of how AI coding agents were used to build this project. Kept up to date during the build, not reconstructed afterwards.
+
+## Tools
+- Claude Code (Claude Opus) — design, planning, implementation, tests, review.
+
+## Log
+
+### 2026-10-02 — Design
+- **Delegated:** problem selection analysis, initial architecture proposal, design spec drafting.
+- **Prompts (representative):** "which one?" (choose between problems), "think more" (asked the agent to critique its own first design).
+- **Agent mistakes caught / suggestions changed:**
+  - First design used a single shared demo workspace — concurrent reviewers would interfere. Changed to isolated workspaces.
+  - First design used `ON CONFLICT DO NOTHING` alone for idempotency — would silently mask changed values on retry. Added per-row hash comparison (`already_present` vs `conflict`) and a one-plan-version-per-migration rule.
+  - First design allowed overwriting existing target rows implicitly — made rollback ambiguous. Changed to insert-only with `TARGET_CONFLICT` quarantine.
+  - Initial hosting suggestion (SQLite on serverless) would lose data; chose Postgres on EC2 with Docker Compose.
+- **Verification:** design reviewed section by section by me before writing the spec; spec self-reviewed for contradictions (moved workspaces and per-record reconciliation from P1 to P0 because tests depend on them).
