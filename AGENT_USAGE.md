@@ -31,3 +31,14 @@ Running log of how AI coding agents were used to build this project. Kept up to 
   - The plan's DB test asserted the trigger message on the thrown error, but Drizzle wraps Postgres errors (`Failed query …`) with the original in `cause`; the test now asserts on `cause.message`. The trigger itself was verified to reject UPDATE/DELETE.
   - A generated `docs/sample-data.md` still contained template placeholders; rewritten from the real manifest and counts.
 - **Verification:** seed generator output checked against the injected-issue manifest (200 → 177 accepted / 23 rejected, by stage); 26 integration tests against real Postgres cover duplicate-free retry after a simulated mid-run failure, concurrent executes, interrupted-run recovery, stale approvals, rollback leaving pre-existing rows untouched, and reconciliation detecting tampering.
+
+### 2026-10-03 — Phases 4–6: agent, API, UI (Tasks 14–24, 29)
+- **Delegated:** Gemini adapter + scripted mock, the bounded tool-calling loop, background agent runs, REST API, and the six workspace screens.
+- **Agent mistakes caught:**
+  - The current shadcn generator uses Base UI, which has no `asChild`; the planned `<Button asChild><Link/></Button>` pattern did not type-check. Links now use `buttonVariants()`, the dialog trigger uses Base UI's `render` prop.
+  - I briefly removed the `cn` npm package believing it was a stray dependency — it is how the new shadcn exports `cn`. Reinstalled after the typecheck failed.
+  - React's lint rule flagged `setState` inside effects for default version selection; replaced with derived state.
+  - The Playwright end-to-end test found a real UI bug: saving answers created v2 but the page stayed on v1. Fixed by selecting the saved version.
+  - Screenshots showed the sans font was never applied (shadcn's CSS pointed `--font-sans` at itself) and long transform chips were clipped on both sides. Both fixed.
+  - Operational slip: I stopped a local server with `taskkill /IM node.exe`, which also killed unrelated Node processes (editor tooling). Later servers are stopped by PID.
+- **Verification:** unit + integration suites, `next build`, lint, a curl smoke test of the API with JSON request logs, and a Playwright happy path (propose → answer → dry run → approve → simulated failure → retry → reconcile → rollback) run twice; screenshots reviewed at 1366 px and 390 px.
