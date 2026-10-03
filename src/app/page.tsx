@@ -1,69 +1,76 @@
-import Image from "next/image";
+'use client';
+import { useMutation } from '@tanstack/react-query';
+import { ArrowRight, Bot, ShieldCheck, Undo2 } from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { ErrorState } from '@/components/states';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { api } from '@/lib/api';
+import { getActorName, recentWorkspaces, setActorName } from '@/lib/actor';
+import { formatTime } from '@/lib/format';
+
+const STEPS = [
+  { icon: Bot, title: 'AI proposes a plan', text: 'A Gemini agent inspects the schemas and data with read-only tools, then drafts mappings, risks and questions.' },
+  { icon: ShieldCheck, title: 'You review and approve', text: 'Edit mappings, answer questions, dry-run any version, and approve one exact version.' },
+  { icon: Undo2, title: 'Execute, reconcile, roll back', text: 'Idempotent batched execution, quarantine with field-level evidence, reconciliation and rollback.' },
+];
 
 export default function Home() {
+  const router = useRouter();
+  const [name, setName] = useState('');
+  const [recent, setRecent] = useState<{ id: string; at: string }[]>([]);
+  // localStorage is only readable after hydration, so this read must happen in an effect.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { setName(getActorName()); setRecent(recentWorkspaces()); }, []);
+  const create = useMutation({
+    mutationFn: () => api<{ id: string }>('/api/workspaces', { method: 'POST' }),
+    onSuccess: ({ id }) => router.push(`/w/${id}`),
+  });
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+    <main className="mx-auto max-w-5xl px-4 py-12 sm:py-20">
+      <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">legacy_crm.customers → customers</p>
+      <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-5xl">Migration Workbench</h1>
+      <p className="mt-4 max-w-2xl text-muted-foreground">
+        Plan and validate the migration of one bounded dataset (up to 500 records) into a mock target store.
+        The AI drafts; a human approves; a deterministic engine executes.
+      </p>
+
+      <div className="mt-8 flex max-w-md flex-col gap-3">
+        <Label htmlFor="actor">Your name <span className="text-muted-foreground">(shown in the history)</span></Label>
+        <Input id="actor" value={name} placeholder="e.g. Priya (reviewer)" maxLength={60}
+          onChange={(e) => { setName(e.target.value); setActorName(e.target.value); }} />
+        <Button size="lg" onClick={() => create.mutate()} disabled={create.isPending}>
+          {create.isPending ? 'Creating workspace…' : 'Start a new workspace'} <ArrowRight className="ml-2 size-4" />
+        </Button>
+        <p className="text-xs text-muted-foreground">Each workspace is an isolated copy of the 200-record sample dataset and its own target store.</p>
+        {create.isError && <ErrorState error={create.error} onRetry={() => create.mutate()} />}
+      </div>
+
+      <div className="mt-12 grid gap-4 sm:grid-cols-3">
+        {STEPS.map(({ icon: Icon, title, text }) => (
+          <Card key={title}>
+            <CardHeader className="pb-2"><Icon className="size-5 text-[var(--accent-ok)]" aria-hidden /><CardTitle className="text-base">{title}</CardTitle></CardHeader>
+            <CardContent className="text-sm text-muted-foreground">{text}</CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {recent.length > 0 && (
+        <section className="mt-12">
+          <h2 className="text-sm font-medium">Recent workspaces on this device</h2>
+          <ul className="mt-2 divide-y rounded-md border">
+            {recent.map((w) => (
+              <li key={w.id}><Link className="flex justify-between px-3 py-2 text-sm hover:bg-muted" href={`/w/${w.id}`}>
+                <span className="font-mono">{w.id.slice(0, 8)}</span><span className="text-muted-foreground">{formatTime(w.at)}</span></Link></li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </main>
   );
 }
