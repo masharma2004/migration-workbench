@@ -42,3 +42,9 @@ Running log of how AI coding agents were used to build this project. Kept up to 
   - Screenshots showed the sans font was never applied (shadcn's CSS pointed `--font-sans` at itself) and long transform chips were clipped on both sides. Both fixed.
   - Operational slip: I stopped a local server with `taskkill /IM node.exe`, which also killed unrelated Node processes (editor tooling). Later servers are stopped by PID.
 - **Verification:** unit + integration suites, `next build`, lint, a curl smoke test of the API with JSON request logs, and a Playwright happy path (propose → answer → dry run → approve → simulated failure → retry → reconcile → rollback) run twice; screenshots reviewed at 1366 px and 390 px.
+
+### 2026-10-03 — Final review
+- **How:** a separate, fresh-context reviewer agent (strongest model) reviewed the whole branch against the spec, the plan's "review focus" list and my recorded rulings.
+- **Accepted and fixed (each with a failing test first):** a 10-minute "stale run takeover" that could leave two executions writing at once; one client being able to exhaust the shared daily agent quota; unlimited workspace creation; unbounded request bodies and plan sizes that could block the single Node process.
+- **Deferred (documented):** raw driver error text shown for failed batches, non-UUID ids returning 500 instead of 404, missing audit event for agent runs recovered at restart, "succeeded" status for runs with hash conflicts, reconciliation not blocked during a running execution, CSV formula-injection hardening, unbounded client request-id header.
+- **Verification:** unit 100/100, integration 38/38, typecheck and lint clean, end-to-end happy path re-run after the fixes.
