@@ -1,8 +1,9 @@
-import { desc, eq } from 'drizzle-orm';
+import { desc, eq, sql } from 'drizzle-orm';
 import { reconcile, type ReconcileResult } from '@/domain/reconcile';
 import { SEED_PREEXISTING_TARGET } from '@/seed';
 import { db } from '../db/client';
 import { planVersions, reconciliations } from '../db/schema';
+import { AppError } from '../errors';
 import { recordEvent } from './audit';
 import { computeReport } from './dry-runs';
 import { activeRuns } from './executions';
@@ -15,7 +16,11 @@ export interface ReconciliationDto { id: string; version: number | null; result:
 export async function runReconciliation(workspaceId: string, actor: string): Promise<ReconciliationDto> {
   const ws = await getWorkspace(workspaceId);
   return db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${'ws:' + workspaceId}))`);
     const active = await activeRuns(tx, workspaceId);
+    if (active.some((r) => r.status === 'running')) {
+      throw new AppError('RUN_IN_PROGRESS', 'A migration run is in progress; reconcile after it finishes');
+    }
     const version = active.length ? await getVersionById(tx, active[0].planVersionId) : null;
     const report = version ? (await computeReport(tx, workspaceId, version)).report : null;
     // All migrated rows count: rows from rolled-back runs should not exist, so any are "unexpected".

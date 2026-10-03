@@ -1,7 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { closeDb, db } from '@/server/db/client';
 import { listEvents } from '@/server/services/audit';
-import { getDryRun, listQuarantine, quarantineCsv, runDryRun } from '@/server/services/dry-runs';
+import { csvCell, getDryRun, listQuarantine, quarantineCsv, runDryRun } from '@/server/services/dry-runs';
 import { createVersion, diffVersions, getVersion, listVersions } from '@/server/services/plans';
 import { REFERENCE_PLAN } from '@/seed/reference-plan';
 import { createTestWorkspace, resetDatabase } from './helpers';
@@ -37,6 +37,14 @@ describe('plan versions', () => {
     expect(v.issues.map((i) => i.code)).toContain('MISSING_TARGET_MAPPING');
     await expect(createVersion(db, { workspaceId: ws, content: { plan: { nope: 1 } }, author: 'user', actor: 't' }))
       .rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+  });
+});
+
+describe('csvCell (review #10)', () => {
+  it('neutralises spreadsheet formulas', () => {
+    expect(csvCell('=1+1')).toBe(`"'=1+1"`);
+    expect(csvCell('@SUM(A1)')).toBe(`"'@SUM(A1)"`);
+    expect(csvCell('plain')).toBe('"plain"');
   });
 });
 

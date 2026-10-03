@@ -108,6 +108,7 @@ async function toDto(r: RunRow): Promise<Omit<AgentRunDto, 'steps'>> {
 }
 
 export async function getAgentRun(workspaceId: string, runId: string): Promise<AgentRunDto> {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(runId)) throw notFound('Agent run');
   const [r] = await db.select().from(agentRuns).where(and(eq(agentRuns.workspaceId, workspaceId), eq(agentRuns.id, runId)));
   if (!r) throw notFound('Agent run');
   const steps = await db.select().from(agentSteps).where(eq(agentSteps.agentRunId, runId)).orderBy(asc(agentSteps.step));

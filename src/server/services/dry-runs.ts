@@ -62,6 +62,7 @@ async function persistQuarantine(tx: DbOrTx, dryRunId: string, report: DryRunRep
 }
 
 export async function getDryRun(workspaceId: string, id: string): Promise<DryRunDto> {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) throw notFound('Dry run');
   const [row] = await db.select().from(dryRuns).where(and(eq(dryRuns.workspaceId, workspaceId), eq(dryRuns.id, id)));
   if (!row) throw notFound('Dry run');
   const v = await db.query.planVersions.findFirst({ where: (p, { eq: e }) => e(p.id, row.planVersionId) });
@@ -84,7 +85,15 @@ export async function listQuarantine(workspaceId: string, dryRunId: string,
       && (!filter.field || q.errors.some((e) => e.targetField === filter.field || e.sourceField === filter.field)));
 }
 
-const csvCell = (v: unknown) => (v === null || v === undefined ? '' : `"${String(v).replace(/"/g, '""')}"`);
+/** Quotes a CSV cell and neutralises spreadsheet formulas (leading = + - @ tab CR). */
+export function csvCell(v: unknown): string {
+  if (v === null || v === undefined) return '';
+  const text = String(v);
+  const first = text.charCodeAt(0);
+  const risky = /^[=+@-]/.test(text) || first === 9 || first === 13;
+  const safe = risky ? `'${text}` : text;
+  return `"${safe.replace(/"/g, '""')}"`;
+}
 
 export async function quarantineCsv(workspaceId: string, dryRunId: string): Promise<string> {
   const rows = await listQuarantine(workspaceId, dryRunId, {});

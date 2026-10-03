@@ -109,6 +109,19 @@ describe('executeMigration', () => {
   });
 });
 
+describe('batch failure reporting (review #5)', () => {
+  it('stores a sanitized error without record values when a batch hits a DB constraint', async () => {
+    const ws = await approvedWorkspace();
+    const [{ email }] = await db.execute<{ email: string }>(sql`select lower(raw->>'email') as email from app.source_records where workspace_id = ${ws} and seq = 1`);
+    await db.execute(sql`insert into target.customers (legacy_id, first_name, email, created_on, status, lifetime_value_cents, is_vip,
+      marketing_opt_in, _workspace_id, _origin, _row_hash) values ('ZZ-1', 'X', ${email}, '2024-01-01', 'active', 0, false, false, ${ws}, 'migrated', 'x')`);
+    const run = await executeMigration(ws, { actor: 'u' });
+    expect(run.status).toBe('failed');
+    expect(run.error).toMatch(/23505/);
+    expect(run.error).not.toContain(email);
+  });
+});
+
 describe('rollbackMigration', () => {
   it('removes only migrated rows of active runs, leaves pre-existing rows, and is not repeatable', async () => {
     const ws = await approvedWorkspace();

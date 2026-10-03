@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { closeDb, db } from '@/server/db/client';
 import { agentRuns, migrationRuns } from '@/server/db/schema';
+import { listEvents } from '@/server/services/audit';
 import { executeMigration } from '@/server/services/executions';
 import { runStartupTasks } from '@/server/startup';
 import { approvedWorkspace, resetDatabase } from './helpers';
@@ -21,5 +22,6 @@ describe('runStartupTasks (review focus 5)', () => {
     const [m] = await db.select().from(migrationRuns).where(eq(migrationRuns.id, run.id));
     expect(a).toMatchObject({ status: 'failed', error: 'Interrupted by server restart' });
     expect(m.status).toBe('interrupted');
+    expect((await listEvents(ws)).map((e) => e.type)).toContain('agent_run.failed');
   });
 });

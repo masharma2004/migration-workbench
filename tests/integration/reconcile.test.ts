@@ -1,7 +1,7 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { closeDb, db } from '@/server/db/client';
-import { targetCustomers } from '@/server/db/schema';
+import { migrationRuns, targetCustomers } from '@/server/db/schema';
 import { executeMigration } from '@/server/services/executions';
 import { listReconciliations, runReconciliation } from '@/server/services/reconciliations';
 import { rollbackMigration } from '@/server/services/rollback';
@@ -37,6 +37,13 @@ describe('runReconciliation', () => {
     const r = await runReconciliation(ws, 'u');
     expect(r.result).toBe('fail');
     expect(r.details.mismatched.map((m) => m.legacyId)).toEqual(['C-00001']);
+  });
+
+  it('refuses to reconcile while a run is in progress (review #9)', async () => {
+    const ws = await approvedWorkspace();
+    const run = await executeMigration(ws, { actor: 'u', failAfterBatches: 1 });
+    await db.update(migrationRuns).set({ status: 'running' }).where(eq(migrationRuns.id, run.id));
+    await expect(runReconciliation(ws, 'u')).rejects.toMatchObject({ code: 'RUN_IN_PROGRESS' });
   });
 
   it('passes with a clean target after rollback and keeps history', async () => {

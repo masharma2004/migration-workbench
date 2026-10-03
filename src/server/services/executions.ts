@@ -52,6 +52,18 @@ export async function markInterruptedRuns(tx: DbOrTx, workspaceId?: string, olde
 
 class SimulatedFailure extends Error {}
 
+/** User-facing error text without SQL parameters (which would contain record values). */
+function describeBatchError(err: unknown): string {
+  if (err instanceof SimulatedFailure) return err.message;
+  const cause = (err as { cause?: { code?: string; constraint_name?: string; constraint?: string } })?.cause;
+  if (cause?.code) {
+    const constraint = cause.constraint_name ?? cause.constraint;
+    return `Database rejected a batch (SQLSTATE ${cause.code}${constraint ? `, constraint ${constraint}` : ''}); committed batches were kept`;
+  }
+  if (err instanceof Error && err.message.startsWith('Run is no longer active')) return err.message;
+  return 'Unexpected error while inserting a batch; committed batches were kept';
+}
+
 export async function executeMigration(workspaceId: string, input: { failAfterBatches?: number | null; actor: string }): Promise<MigrationRunDto> {
   const ws = await getWorkspace(workspaceId);
   const failAfter = input.failAfterBatches ?? null;
@@ -126,8 +138,8 @@ export async function executeMigration(workspaceId: string, input: { failAfterBa
       log.info({ batch: counts.batchesCommitted, inserted: counts.inserted, alreadyPresent: counts.alreadyPresent }, 'batch committed');
     }
   } catch (err) {
-    error = err instanceof Error ? err.message : String(err);
-    log.warn({ err: error, counts }, 'run failed');
+    error = describeBatchError(err);
+    log.warn({ error, counts }, 'run failed');
   }
 
   // Phase 3: finalise.

@@ -51,7 +51,8 @@ type Handler<P> = (a: { req: NextRequest; params: P; log: Logger; requestId: str
 
 export function withRoute<P = Record<string, string>>(handler: Handler<P>) {
   return async (req: NextRequest, ctx: { params: Promise<P> }): Promise<Response> => {
-    const requestId = req.headers.get('x-request-id') || randomUUID();
+    const incoming = req.headers.get('x-request-id');
+    const requestId = incoming && /^[\w-]{1,100}$/.test(incoming) ? incoming : randomUUID();
     const started = performance.now();
     const params = ((await ctx?.params) ?? {}) as P;
     const log = logger.child({ component: 'http', requestId, method: req.method, path: req.nextUrl.pathname,

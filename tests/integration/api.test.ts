@@ -51,6 +51,21 @@ describe('API', () => {
   });
 });
 
+describe('minor hardening', () => {
+  it('returns 404, not 500, for malformed run and dry-run ids (review #6)', async () => {
+    const { GET: getRun } = await import('@/app/api/workspaces/[ws]/agent-runs/[runId]/route');
+    const { GET: getDry } = await import('@/app/api/workspaces/[ws]/dry-runs/[id]/route');
+    const { id } = await (await createWs(req('/api/workspaces', { method: 'POST' }), p({}))).json();
+    expect((await getRun(req(`/api/workspaces/${id}/agent-runs/abc`), p({ ws: id, runId: 'abc' }))).status).toBe(404);
+    expect((await getDry(req(`/api/workspaces/${id}/dry-runs/abc`), p({ ws: id, id: 'abc' }))).status).toBe(404);
+  });
+  it('ignores unsafe client request ids (review #11)', async () => {
+    const bad = 'x'.repeat(300);
+    const res = await health(new NextRequest('http://localhost/api/health', { headers: { 'x-request-id': bad } }), p({}));
+    expect(res.headers.get('x-request-id')).not.toBe(bad);
+  });
+});
+
 describe('workspace creation limits (review #3)', () => {
   it('rate-limits workspace creation per client', async () => {
     const statuses: number[] = [];
