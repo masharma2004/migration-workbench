@@ -37,10 +37,8 @@ export function getRule(name: string): RuleDef<unknown> | undefined {
 
 export function describeRules(): { name: RuleName; description: string; params: Record<string, unknown> }[] {
   return RULE_NAMES.map((name) => {
-    const { $schema: _ignored, ...params } = z.toJSONSchema(RULES[name].params, { io: 'input' }) as Record<
-      string,
-      unknown
-    >;
+    const params = z.toJSONSchema(RULES[name].params, { io: 'input' }) as Record<string, unknown>;
+    delete params.$schema;
     return { name, description: RULES[name].description, params };
   });
 }

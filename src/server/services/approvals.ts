@@ -5,7 +5,7 @@ import { db, type DbOrTx } from '../db/client';
 import { approvals, planVersions } from '../db/schema';
 import { AppError } from '../errors';
 import { recordEvent } from './audit';
-import { latestDryRunFor, type DryRunDto } from './dry-runs';
+import { latestDryRunFor } from './dry-runs';
 import { getVersion, getVersionById, type PlanVersionDto } from './plans';
 import { getWorkspace } from './workspaces';
 
