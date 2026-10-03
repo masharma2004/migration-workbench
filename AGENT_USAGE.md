@@ -58,3 +58,8 @@ Running log of how AI coding agents were used to build this project. Kept up to 
 - **Second review pass — fixed the deferred minor findings, each test-first:** malformed ids return 404 instead of 500; restart recovery writes `agent_run.failed` audit events; reconciliation refuses while a run is in progress; CSV export neutralises spreadsheet formulas; client `x-request-id` values are validated; failed batches store a sanitized error (SQLSTATE and constraint) instead of the driver message containing record values.
 - **Still deferred:** a run whose skipped rows conflict by hash is reported as `succeeded` (conflicts are counted and reconciliation fails on them).
 - **Free-tier constraint (decided with the user):** the hosted demo uses a free Gemini key. Added plain-language quota errors, lower production caps, and a "Scripted demo (no LLM)" button that replays the hand-written reference run, labelled as scripted in the UI and in the run's recorded model name, so reviewers can still complete the workflow if the daily quota runs out.
+
+### 2026-10-03 — Deployment
+- **Delegated:** server bootstrap (Docker, swap), writing the server `.env` (the Gemini key was copied file-to-file, never printed), compose deploy, verification.
+- **Verification on the live URL:** `/api/health` ok with database and agent configured; HTTP→HTTPS redirect with a valid Let's Encrypt certificate; a real Gemini agent run via the public API succeeded (19 tool calls, draft v1); the Playwright happy path passed against the deployment using the scripted demo agent to preserve free-tier quota.
+- **Repository hygiene (user request):** commit messages were rewritten to remove AI co-author trailers; AI usage is documented here instead.

@@ -2,7 +2,7 @@
 
 An agentic data-migration planner and reconciliation workbench. A Gemini agent inspects a legacy customer dataset with a fixed set of read-only tools and drafts a mapping and transformation plan; a human reviews, edits and approves one exact plan version; a deterministic engine then dry-runs, executes (idempotently), reconciles and rolls back the migration into a mock Postgres target store, keeping a full audit history.
 
-**Live demo:** _URL added after deployment_ · **Stack:** Next.js 16 · TypeScript · Postgres 17 · Drizzle · Gemini · Docker · Caddy · AWS EC2
+**Live demo:** https://34.233.58.208.sslip.io · **Stack:** Next.js 16 · TypeScript · Postgres 17 · Drizzle · Gemini · Docker · Caddy · AWS EC2
 
 ---
 
@@ -102,6 +102,7 @@ npm run dev                     # http://localhost:3000
 npm run test:unit   # domain rules, plan, engine, reconcile, seed manifest, agent loop (mock LLM), HTTP helpers
 npm run test:int    # services and API against real Postgres (workbench_test)
 npm run e2e         # Playwright happy path with the mock agent (needs a production build: npm run build)
+E2E_BASE_URL=https://34.233.58.208.sslip.io E2E_DEMO=1 npx playwright test   # same flow against the live deployment
 npm run typecheck && npm run lint
 ```
 
