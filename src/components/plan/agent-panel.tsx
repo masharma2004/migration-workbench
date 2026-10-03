@@ -23,7 +23,7 @@ export function AgentPanel({ ws, onVersionCreated, traceStep, onCloseTrace }: {
   const announced = useRef<string | null>(null);
 
   const propose = useMutation({
-    mutationFn: () => api<{ runId: string }>(`/api/workspaces/${ws}/agent-runs`, { method: 'POST', body: { mode: 'propose' } }),
+    mutationFn: (demo: boolean) => api<{ runId: string }>(`/api/workspaces/${ws}/agent-runs`, { method: 'POST', body: { mode: 'propose', demo } }),
     onSuccess: () => { toast.info('Agent started — watch the trace'); invalidate(); },
   });
 
@@ -46,12 +46,18 @@ export function AgentPanel({ ws, onVersionCreated, traceStep, onCloseTrace }: {
           <CardTitle className="flex items-center gap-2 text-base"><Bot className="size-4" aria-hidden />Planning agent</CardTitle>
           <CardDescription>Uses only read-only inspection and validation tools; it can create drafts but never approve or execute.</CardDescription>
         </div>
-        <Button onClick={() => propose.mutate()} disabled={propose.isPending || busy}>
-          {busy || propose.isPending ? <><Loader2 className="mr-2 size-4 animate-spin" />Running…</> : 'Propose new plan'}
-        </Button>
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button variant="outline" onClick={() => propose.mutate(true)} disabled={propose.isPending || busy}
+            title="Replays a fixed, hand-written agent run without calling Gemini. Use it if the free-tier Gemini quota is exhausted.">
+            Scripted demo (no LLM)
+          </Button>
+          <Button onClick={() => propose.mutate(false)} disabled={propose.isPending || busy}>
+            {busy || propose.isPending ? <><Loader2 className="mr-2 size-4 animate-spin" />Running…</> : 'Propose with Gemini'}
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        {propose.isError && <ErrorState error={propose.error} onRetry={() => propose.mutate()} />}
+        {propose.isError && <ErrorState error={propose.error} />}
         {latest ? (
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <Badge variant={latest.status === 'failed' ? 'destructive' : latest.status === 'succeeded' ? 'default' : 'secondary'}>{latest.status}</Badge>

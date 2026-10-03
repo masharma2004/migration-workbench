@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { extractText, isRetryable, retryDelayMs } from '@/server/agent/llm/gemini';
+import { describeGeminiFailure, extractText, isRetryable, retryDelayMs } from '@/server/agent/llm/gemini';
 import { MockProvider } from '@/server/agent/llm/mock';
 
 describe('gemini helpers', () => {
@@ -21,6 +21,13 @@ describe('retryDelayMs', () => {
     expect(retryDelayMs({ status: 429, message: '{"error":{"details":[{"retryDelay":"5s"}]}}' })).toBe(5000);
     expect(retryDelayMs({ status: 429, message: 'Please retry in 5.214834079s.' })).toBe(5215);
     expect(retryDelayMs({ status: 503, message: 'oops' })).toBeNull();
+  });
+});
+
+describe('describeGeminiFailure', () => {
+  it('explains quota exhaustion in plain words', () => {
+    expect(describeGeminiFailure({ status: 429, message: 'RESOURCE_EXHAUSTED' })).toMatch(/free-tier quota/i);
+    expect(describeGeminiFailure({ status: 503, message: 'overloaded' })).toMatch(/HTTP 503/);
   });
 });
 

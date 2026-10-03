@@ -21,6 +21,7 @@ export const agentRunBody = z.object({
   baseVersion: z.number().int().min(1).optional(),
   answers: z.record(z.string(), z.string().max(2000)).optional(),
   instructions: z.string().max(2000).optional(),
+  demo: z.boolean().optional(),
 });
 export const executeBody = z.object({ failAfterBatches: z.number().int().min(0).max(20).nullable().optional() });
 export const quarantineQuery = z.object({ stage: z.string().optional(), code: z.string().optional(), field: z.string().optional() });

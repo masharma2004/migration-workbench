@@ -53,6 +53,14 @@ describe('agent runs', () => {
     await expect(startAgentRun(ws, { mode: 'propose' }, 't', { provider: null })).rejects.toMatchObject({ code: 'LLM_UNAVAILABLE' });
   });
 
+  it('runs the clearly labelled scripted demo agent even without an LLM configured', async () => {
+    const ws = await createTestWorkspace();
+    const { runId } = await startAgentRun(ws, { mode: 'propose', demo: true }, 't', { provider: null, background: false });
+    expect(await getAgentRun(ws, runId)).toMatchObject({ status: 'succeeded', model: 'scripted-demo (no LLM)', resultVersion: 1 });
+    await expect(startAgentRun(ws, { mode: 'revise', baseVersion: 1, demo: true }, 't', { provider: null }))
+      .rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+  });
+
   it('requires baseVersion in revise mode', async () => {
     const ws = await createTestWorkspace();
     await createVersion(db, { workspaceId: ws, content: { plan: (await import('@/seed/reference-plan')).REFERENCE_PLAN }, author: 'user', actor: 't' });

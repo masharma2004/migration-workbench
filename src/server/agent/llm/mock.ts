@@ -4,9 +4,8 @@ export type MockStep = { calls?: ToolCall[]; text?: string; delayMs?: number };
 
 /** Replays a fixed script. Used by tests, CI and `LLM_PROVIDER=mock` demos. */
 export class MockProvider implements LLMProvider {
-  readonly model = 'mock-scripted';
   readonly sessions: { system: string; tools: ToolDecl[]; received: LLMMessage[] }[] = [];
-  constructor(private readonly script: MockStep[]) {}
+  constructor(private readonly script: MockStep[], readonly model = 'mock-scripted') {}
 
   startSession(opts: { system: string; tools: ToolDecl[] }): LLMSession {
     const record = { ...opts, received: [] as LLMMessage[] };

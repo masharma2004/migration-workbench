@@ -23,6 +23,15 @@ export function retryDelayMs(err: unknown): number | null {
   return m ? Math.min(30_000, Math.ceil(Number(m[1]) * 1000)) : null;
 }
 
+/** Short, user-facing explanation of a failed Gemini call (never the raw response body). */
+export function describeGeminiFailure(err: unknown): string {
+  const e = err as { status?: number; message?: string } | null;
+  if (e?.status === 429) {
+    return 'Gemini free-tier quota reached (requests per minute or per day). Wait a minute and try again, or use the scripted demo agent.';
+  }
+  return `Gemini request failed${e?.status ? ` (HTTP ${e.status})` : ''}. Try again shortly.`;
+}
+
 const sleep = (ms: number, signal?: AbortSignal) => new Promise<void>((resolve) => {
   const t = setTimeout(resolve, ms);
   signal?.addEventListener('abort', () => { clearTimeout(t); resolve(); }, { once: true });
@@ -70,8 +79,7 @@ export class GeminiProvider implements LLMProvider {
           }
         }
         if (signal?.aborted) throw new LLMUnavailableError('LLM call aborted (time budget exceeded)');
-        const status = (lastErr as { status?: number })?.status;
-        throw new LLMUnavailableError(`Gemini request failed${status ? ` (HTTP ${status})` : ''}: ${(lastErr as Error)?.message ?? 'unknown error'}`);
+        throw new LLMUnavailableError(describeGeminiFailure(lastErr));
       },
     };
   }

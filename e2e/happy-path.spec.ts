@@ -7,7 +7,7 @@ test('plan → approve → fail → retry → reconcile → rollback', async ({ 
   await page.waitForURL(/\/w\/[\w-]+$/);
 
   await page.getByRole('link', { name: /Plan/ }).click();
-  await page.getByRole('button', { name: /Propose new plan/ }).click();
+  await page.getByRole('button', { name: /Propose with Gemini/ }).click();
   await expect(page.getByText(/Plan v1/)).toBeVisible({ timeout: 30_000 });
 
   await page.getByRole('button', { name: 'Month-first (US)' }).click();

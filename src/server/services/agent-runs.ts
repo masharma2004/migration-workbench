@@ -2,7 +2,9 @@ import { and, asc, desc, eq } from 'drizzle-orm';
 import type { Question, VersionContent } from '@/domain/plan';
 import { runAgentLoop, type AgentLimits, type AgentStepRecord } from '../agent/loop';
 import type { LLMProvider } from '../agent/llm/types';
+import { MockProvider } from '../agent/llm/mock';
 import { buildProposePrompt, buildRevisePrompt } from '../agent/prompts';
+import { referenceScript } from '../agent/reference-script';
 import { getProvider } from '../agent/provider';
 import { db } from '../db/client';
 import { agentRuns, agentSteps, planVersions } from '../db/schema';
@@ -35,12 +37,15 @@ export function mergeAnsweredQuestions(base: Question[], next: Question[]): Ques
 
 export async function startAgentRun(
   workspaceId: string,
-  input: { mode: 'propose' | 'revise'; baseVersion?: number; answers?: Record<string, string>; instructions?: string },
+  input: { mode: 'propose' | 'revise'; baseVersion?: number; answers?: Record<string, string>; instructions?: string; demo?: boolean },
   actor: string,
   deps: { provider?: LLMProvider | null; background?: boolean; limits?: Partial<AgentLimits> } = {},
 ): Promise<{ runId: string }> {
   await getWorkspace(workspaceId);
-  const provider = deps.provider === undefined ? getProvider() : deps.provider;
+  if (input.demo && input.mode !== 'propose') throw new AppError('VALIDATION_ERROR', 'The scripted demo agent can only propose a plan');
+  const provider = input.demo
+    ? new MockProvider(referenceScript(), 'scripted-demo (no LLM)')
+    : deps.provider === undefined ? getProvider() : deps.provider;
   if (!provider) throw new AppError('LLM_UNAVAILABLE', 'The AI agent is not configured (missing GEMINI_API_KEY). You can still author plans manually.');
   if (input.mode === 'revise' && !input.baseVersion) throw new AppError('VALIDATION_ERROR', 'baseVersion is required to revise a plan');
   const base = input.mode === 'revise' ? await getVersion(workspaceId, input.baseVersion!) : null;
