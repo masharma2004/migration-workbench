@@ -1,11 +1,53 @@
-# Agent Usage Log
+# Agent Usage
 
-Running log of how AI coding agents were used to build this project. Kept up to date during the build, not reconstructed afterwards.
+How AI coding agents were used to build this project. The summary comes first; the dated log below it was written as the work happened, not reconstructed afterwards.
 
-## Tools
-- Claude Code (Claude Opus) — design, planning, implementation, tests, review.
+## Summary
 
-## Log
+### Tools
+- **Claude Code** (Claude Opus) as the main coding agent: design, spec, implementation plan, test-first implementation, debugging, deployment scripts.
+- **A separate reviewer agent** (fresh context, strongest available model) for an independent whole-branch code review.
+- **Playwright** for end-to-end runs and screenshots that I reviewed; **Gemini** (`gemini-3.5-flash-lite`) as the in-app planning agent, evaluated with `scripts/eval-agent.ts`.
+
+### How I worked
+1. Chose the problem after comparing scope against the time available.
+2. Had the agent propose a design, then asked it to critique its own design before writing a spec (`docs/superpowers/specs/`).
+3. Turned the spec into a task-by-task plan with exact files, interfaces and tests (`docs/superpowers/plans/`).
+4. Executed the plan test-first: each test was run and seen failing before the code existed; every task ended with the full suite green.
+5. Independent review → fixes with failing tests first → live runs against real Gemini → fixes → deployment → end-to-end test against production.
+
+### Representative prompts
+- "which one?" — compare the two available problems against the scoring and the time available, and recommend one.
+- "think more" — critique your own first design and find the gaps before writing anything (this produced workspace isolation, hash-based retry checks and insert-only rollback).
+- "go ahead, just teach me what you are doing, and the follow-up and tweak questions" — explain each phase, likely reviewer questions, and where code would change for common tweaks.
+- "take a look and check if we are good or the code has bugs or is far off from the objective" — independent review against the requirements.
+- "i have free tier only" — make the hosted AI feature dependable on a free Gemini key.
+- The reviewer agent was asked to review the whole branch against the spec, a list of failure modes the tests did not cover, and the judgement calls recorded during implementation, and to report findings with severity, file:line and a concrete failure scenario.
+
+### Delegated vs decided
+- **Delegated to the agent:** scaffolding, domain code (rules, engine, reconciliation), services, API, UI, tests, seed generator, Docker/CI/deploy scripts, documentation drafts.
+- **Decided or approved by me:** the problem choice, stack and hosting (Next.js + Postgres on AWS EC2), Gemini as the LLM, the run → review → re-run agent interaction model, the scope and priorities, staying on the free Gemini tier, publishing the repository, and every deployment step that touched my accounts.
+
+### Important agent mistakes and rejected suggestions
+- First design: one shared demo workspace (reviewers would collide) → isolated workspaces.
+- First design: `ON CONFLICT DO NOTHING` alone for retries (would hide changed values) → row-hash comparison and one plan version per migration.
+- Suggested SQLite on serverless hosting (data loss) → Postgres on EC2.
+- A 10-minute "stale run takeover" that could leave two executions writing at once — caught by the independent review, removed.
+- No limits on request size, workspace creation or per-client agent use — caught by the review, fixed.
+- Assumed `gemini-2.5-flash`; live runs showed it is retired for new keys, the tool budget was too small, the free tier is 5 requests/minute, and the agent missed ambiguous dates → model change, batched profiling, retry-delay handling, a deterministic ambiguity warning.
+- UI: a stale component-library pattern (`asChild`), a wrongly removed dependency, a broken font variable, and a version-selection bug found by the end-to-end test.
+- Operational: killing every Node process to stop a local server — replaced by stopping processes by ID.
+
+### How the output was verified
+- 109 unit and 44 integration tests (real Postgres) covering the invariants listed in the README; each written to fail first.
+- A deterministic seed with a manifest of injected issues; a test asserts the quarantine matches it exactly.
+- Playwright end-to-end run of the whole flow, locally and against the live deployment.
+- Screenshots reviewed at desktop and mobile widths.
+- Independent review findings fixed with failing tests first.
+- Live Gemini runs scored against a hand-written reference plan (`docs/agent-eval.md`).
+- Production checks: health, HTTPS, database not publicly reachable, a real agent run through the public API.
+
+## Log (written during the work)
 
 ### 2026-10-02 — Design
 - **Delegated:** problem selection analysis, initial architecture proposal, design spec drafting.
