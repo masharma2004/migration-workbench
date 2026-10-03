@@ -75,6 +75,14 @@ describe('executeMigration', () => {
     expect((await listRuns(ws))[1].status).toBe('interrupted');
   });
 
+  it('never takes over a long-running run while the process is alive (review #1)', async () => {
+    const ws = await approvedWorkspace();
+    const run = await executeMigration(ws, { actor: 'u', failAfterBatches: 1 });
+    await db.update(migrationRuns).set({ status: 'running', startedAt: new Date(Date.now() - 11 * 60_000) })
+      .where(eq(migrationRuns.id, run.id));
+    await expect(executeMigration(ws, { actor: 'u' })).rejects.toMatchObject({ code: 'RUN_IN_PROGRESS' });
+  });
+
   it('refuses a different plan version until the active migration is rolled back', async () => {
     const ws = await approvedWorkspace();
     await executeMigration(ws, { actor: 'u' });

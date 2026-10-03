@@ -62,7 +62,8 @@ export async function executeMigration(workspaceId: string, input: { failAfterBa
   // Phase 1: gate checks + claim the run, under the workspace lock.
   const { run, report } = await db.transaction(async (tx) => {
     await lockWorkspace(tx, workspaceId);
-    await markInterruptedRuns(tx, workspaceId, 10 * 60_000);
+    // Crashed runs are recovered at process start (runStartupTasks). While this single process is alive,
+    // a 'running' run is genuinely in progress, so it is never taken over here.
     const [running] = await tx.select().from(migrationRuns)
       .where(and(eq(migrationRuns.workspaceId, workspaceId), eq(migrationRuns.status, 'running')));
     if (running) throw new AppError('RUN_IN_PROGRESS', 'A migration run is already in progress for this workspace');
@@ -109,6 +110,8 @@ export async function executeMigration(workspaceId: string, input: { failAfterBa
       }
       const batch = report.accepted.slice(i, i + EXECUTION_BATCH_SIZE);
       await db.transaction(async (tx) => {
+        const [current] = await tx.select({ status: migrationRuns.status }).from(migrationRuns).where(eq(migrationRuns.id, run.id));
+        if (current?.status !== 'running') throw new Error('Run is no longer active; stopping without writing further batches');
         const inserted = new Set(await insertMigratedBatch(tx, workspaceId, run.id, batch));
         const skipped = batch.filter((a) => !inserted.has(a.legacyId));
         const hashes = await storedHashes(tx, workspaceId, skipped.map((a) => a.legacyId));
@@ -131,7 +134,12 @@ export async function executeMigration(workspaceId: string, input: { failAfterBa
   const status = error ? 'failed' : 'succeeded';
   const final = await db.transaction(async (tx) => {
     const [updated] = await tx.update(migrationRuns).set({ status, counts, error, finishedAt: new Date() })
-      .where(eq(migrationRuns.id, run.id)).returning();
+      .where(and(eq(migrationRuns.id, run.id), eq(migrationRuns.status, 'running'))).returning();
+    if (!updated) {
+      // Status was changed elsewhere (e.g. marked interrupted); keep that state and report it.
+      const [existing] = await tx.select().from(migrationRuns).where(eq(migrationRuns.id, run.id));
+      return existing;
+    }
     await recordEvent(tx, { workspaceId, type: error ? 'execution.failed' : 'execution.succeeded', actor: input.actor,
       subjectType: 'migration_run', subjectId: run.id, payload: { kind: run.kind, attempt: run.attempt, counts, error } });
     return updated;

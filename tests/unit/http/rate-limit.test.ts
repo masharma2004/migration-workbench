@@ -13,6 +13,13 @@ describe('RateLimiter', () => {
     now = 1001;
     expect(rl.check('a').ok).toBe(true);
   });
+  it('caps a single key per day so one client cannot exhaust the global cap (review #2)', () => {
+    let now = Date.UTC(2026, 9, 2, 1, 0);
+    const rl = new RateLimiter(100, 1000, 1000, () => now, 3);
+    for (let i = 0; i < 3; i++) { expect(rl.check('a').ok).toBe(true); now += 2000; }
+    expect(rl.check('a')).toMatchObject({ ok: false, reason: expect.stringMatching(/per day/) });
+    expect(rl.check('b').ok).toBe(true);
+  });
   it('enforces a global daily cap that resets each UTC day', () => {
     let now = Date.UTC(2026, 9, 2, 23, 0);
     const rl = new RateLimiter(100, 1000, 2, () => now);

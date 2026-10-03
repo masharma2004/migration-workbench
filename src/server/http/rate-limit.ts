@@ -2,14 +2,18 @@ export class RateLimiter {
   private readonly hits = new Map<string, number[]>();
   private day = '';
   private dayCount = 0;
+  private readonly keyDay = new Map<string, number>();
 
   constructor(private readonly perWindow: number, private readonly windowMs: number, private readonly dailyCap: number,
-    private readonly now: () => number = Date.now) {}
+    private readonly now: () => number = Date.now, private readonly perKeyDaily = Number.POSITIVE_INFINITY) {}
 
   check(key: string): { ok: true } | { ok: false; retryAfterSec: number; reason: string } {
     const t = this.now();
     const today = new Date(t).toISOString().slice(0, 10);
-    if (today !== this.day) { this.day = today; this.dayCount = 0; }
+    if (today !== this.day) { this.day = today; this.dayCount = 0; this.keyDay.clear(); }
+    if ((this.keyDay.get(key) ?? 0) >= this.perKeyDaily) {
+      return { ok: false, retryAfterSec: 3600, reason: `At most ${this.perKeyDaily} requests per day from one client` };
+    }
     if (this.dayCount >= this.dailyCap) {
       return { ok: false, retryAfterSec: 3600, reason: `The daily agent run limit (${this.dailyCap}) has been reached` };
     }
@@ -22,9 +26,15 @@ export class RateLimiter {
     recent.push(t);
     this.hits.set(key, recent);
     this.dayCount += 1;
+    this.keyDay.set(key, (this.keyDay.get(key) ?? 0) + 1);
     return { ok: true };
   }
 }
 
 export const agentLimiter = new RateLimiter(
-  Number(process.env.AGENT_RATE_PER_10MIN ?? 6), 10 * 60_000, Number(process.env.AGENT_DAILY_CAP ?? 300));
+  Number(process.env.AGENT_RATE_PER_10MIN ?? 6), 10 * 60_000, Number(process.env.AGENT_DAILY_CAP ?? 300),
+  Date.now, Number(process.env.AGENT_RATE_PER_DAY ?? 30));
+
+export const workspaceLimiter = new RateLimiter(
+  Number(process.env.WORKSPACE_RATE_PER_10MIN ?? 20), 10 * 60_000, Number(process.env.WORKSPACE_DAILY_CAP ?? 2000),
+  Date.now, Number(process.env.WORKSPACE_RATE_PER_DAY ?? 100));

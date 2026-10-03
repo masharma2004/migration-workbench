@@ -33,6 +33,11 @@ describe('withRoute', () => {
     expect(res.headers.get('x-request-id')).toBe('req-1');
     expect(await res.json()).toEqual({ id: 'a', n: 1 });
   });
+  it('rejects oversized bodies with 413 LIMIT_EXCEEDED (review #4)', async () => {
+    const res = await call(JSON.stringify({ n: 1, pad: 'x'.repeat(300_000) }));
+    expect(res.status).toBe(413);
+    expect((await res.json()).error.code).toBe('LIMIT_EXCEEDED');
+  });
   it('returns 400 VALIDATION_ERROR for invalid JSON and schema failures', async () => {
     const bad = await call('{not json');
     expect(bad.status).toBe(400);

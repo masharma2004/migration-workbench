@@ -95,6 +95,16 @@ describe('diffPlans', () => {
   });
 });
 
+describe('size bounds (review #4)', () => {
+  it('rejects absurd numbers of mappings or transforms', () => {
+    const many = { ...REFERENCE_PLAN, mappings: Array.from({ length: 51 }, () => REFERENCE_PLAN.mappings[0]) };
+    expect(planSchema.safeParse(many).success).toBe(false);
+    const long = structuredClone(REFERENCE_PLAN);
+    long.mappings[0].transforms = Array.from({ length: 11 }, () => ({ rule: 'trim', params: {} }));
+    expect(planSchema.safeParse(long).success).toBe(false);
+  });
+});
+
 describe('versionContentSchema', () => {
   it('applies defaults for metadata arrays', () => {
     const c = versionContentSchema.parse({ plan: REFERENCE_PLAN });

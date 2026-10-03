@@ -16,8 +16,13 @@ export function toErrorBody(err: unknown, requestId: string) {
   return { status, body: { error: { code, message, ...(details !== undefined ? { details } : {}), requestId } } };
 }
 
+export const MAX_BODY_BYTES = 256 * 1024;
+
 export async function parseBody<T>(req: Request, schema: z.ZodType<T>): Promise<T> {
+  const tooLarge = () => new AppError('LIMIT_EXCEEDED', `Request body exceeds ${MAX_BODY_BYTES / 1024} KB`);
+  if (Number(req.headers.get('content-length') ?? 0) > MAX_BODY_BYTES) throw tooLarge();
   const text = await req.text();
+  if (text.length > MAX_BODY_BYTES) throw tooLarge();
   let json: unknown = {};
   if (text.trim()) {
     try { json = JSON.parse(text); } catch { throw new AppError('VALIDATION_ERROR', 'Request body is not valid JSON'); }

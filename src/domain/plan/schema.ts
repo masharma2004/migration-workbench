@@ -8,7 +8,7 @@ export const transformStepSchema = z.object({
 export const mappingSchema = z.object({
   targetField: z.string().min(1),
   sourceField: z.string().min(1).nullable(),
-  transforms: z.array(transformStepSchema).default([]),
+  transforms: z.array(transformStepSchema).max(10).default([]),
   rationale: z.string().max(1000).optional(),
   confidence: z.enum(['high', 'medium', 'low']).optional(),
 });
@@ -16,9 +16,10 @@ export const mappingSchema = z.object({
 export const planSchema = z.object({
   sourceSchemaVersion: z.string(),
   targetSchemaVersion: z.string(),
-  mappings: z.array(mappingSchema),
+  mappings: z.array(mappingSchema).max(50),
   unmappedSourceFields: z
     .array(z.object({ field: z.string(), decision: z.literal('drop'), reason: z.string().min(1).max(500) }))
+    .max(50)
     .default([]),
 });
 
@@ -49,9 +50,9 @@ export const questionSchema = z.object({
 
 export const versionContentSchema = z.object({
   plan: planSchema,
-  risks: z.array(riskSchema).default([]),
-  incompatibilities: z.array(incompatibilitySchema).default([]),
-  questions: z.array(questionSchema).default([]),
+  risks: z.array(riskSchema).max(50).default([]),
+  incompatibilities: z.array(incompatibilitySchema).max(50).default([]),
+  questions: z.array(questionSchema).max(50).default([]),
   summary: z.string().max(4000).default(''),
 });
 

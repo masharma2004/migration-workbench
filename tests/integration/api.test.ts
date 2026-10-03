@@ -50,3 +50,11 @@ describe('API', () => {
     expect((await exec.json()).error.code).toBe('NOT_APPROVED');
   });
 });
+
+describe('workspace creation limits (review #3)', () => {
+  it('rate-limits workspace creation per client', async () => {
+    const statuses: number[] = [];
+    for (let i = 0; i < 25; i++) statuses.push((await createWs(req('/api/workspaces', { method: 'POST' }), p({}))).status);
+    expect(statuses).toContain(429);
+  });
+});
