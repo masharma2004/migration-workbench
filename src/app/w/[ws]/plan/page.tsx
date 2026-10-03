@@ -85,7 +85,7 @@ export default function PlanPage() {
                     <CardContent><RisksPanel version={version} onEvidence={setEvidenceStep} /></CardContent></Card>
                   <Card><CardHeader><CardTitle className="text-base">Clarification questions</CardTitle>
                     <CardDescription>Blocking questions must be answered before approval.</CardDescription></CardHeader>
-                    <CardContent><QuestionsPanel key={version.id} ws={ws} version={version} /></CardContent></Card>
+                    <CardContent><QuestionsPanel key={version.id} ws={ws} version={version} onSaved={setSelected} /></CardContent></Card>
                 </div>
                 {editing && <PlanEditor key={version.id} ws={ws} version={version} open={editing} onOpenChange={setEditing} onSaved={setSelected} />}
                 <Sheet open={evidenceStep !== null} onOpenChange={(o) => !o && setEvidenceStep(null)}>

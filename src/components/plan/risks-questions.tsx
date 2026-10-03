@@ -41,7 +41,7 @@ export function RisksPanel({ version, onEvidence }: { version: PlanVersionDto; o
   );
 }
 
-export function QuestionsPanel({ ws, version }: { ws: string; version: PlanVersionDto }) {
+export function QuestionsPanel({ ws, version, onSaved }: { ws: string; version: PlanVersionDto; onSaved: (v: number) => void }) {
   const invalidate = useWorkspaceInvalidate(ws);
   const [answers, setAnswers] = useState<Record<string, string>>(
     Object.fromEntries(version.content.questions.map((q) => [q.id, q.answer ?? ''])));
@@ -52,7 +52,7 @@ export function QuestionsPanel({ ws, version }: { ws: string; version: PlanVersi
   const save = useMutation({
     mutationFn: () => api<PlanVersionDto>(`/api/workspaces/${ws}/plans`, { method: 'POST',
       body: { baseVersion: version.version, content: withAnswers(), changeNote: 'Answered clarification questions' } }),
-    onSuccess: (v) => { toast.success(`Saved answers as v${v.version}`); invalidate(); },
+    onSuccess: (v) => { toast.success(`Saved answers as v${v.version}`); invalidate(); onSaved(v.version); },
   });
   const revise = useMutation({
     mutationFn: () => api<{ runId: string }>(`/api/workspaces/${ws}/agent-runs`, { method: 'POST',
