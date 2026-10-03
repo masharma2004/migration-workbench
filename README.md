@@ -14,11 +14,11 @@ No account is needed. Each visitor gets an isolated workspace, so reviewers neve
 2. **Overview** — inspect the source schema (all text), the strict target schema and the raw records.
 3. **Plan → Propose with Gemini.** (If the free Gemini quota is exhausted, use **Scripted demo (no LLM)** — it is labelled as such everywhere.) The agent runs in the background; open **View trace** to watch every tool call. You get draft **v1**: mappings with confidence and rationale, incompatible/missing fields, risks that cite the tool calls that prove them (click *step #N*), and clarification questions — two of them **blocking** (ambiguous date order; defaulting marketing consent).
 4. Answer the blocking questions (quick-pick buttons) → **Save answers as new version** (v2), or **Revise with agent**. Use **Edit** to change any mapping by hand and **Compare versions** to diff.
-5. **Dry run this version.** Expect **200 source → 184 transformed → 177 accepted / 23 quarantined**. Filter the quarantine by stage or code and expand a row to see every field error with the original source value, the rule that failed, and the raw record. Export as CSV.
-6. **Approve & execute.** The readiness checklist must be green (valid plan, blocking questions answered, a dry run for this exact version). Approve, then tick **Simulate a failure after 2 batches** and **Execute** → run #1 *failed* with 100 rows committed.
-7. Untick and click **Retry / resume** → run #2 inserts **77**, reports **100 already present**, 0 duplicates. Retrying again inserts 0.
+5. **Dry run this version.** With the reference plan (or the scripted demo) expect **200 source → 184 transformed → 177 accepted / 23 quarantined**; a Gemini draft usually lands within a few records of that, depending on choices such as whether a blank VIP flag is quarantined or defaulted. Filter the quarantine by stage or code and expand a row to see every field error with the original source value, the rule that failed, and the raw record. Export as CSV.
+6. **Approve & execute.** The readiness checklist must be green (valid plan, blocking questions answered, a dry run for this exact version). Approve, then tick **Simulate a failure after 2 batches** and **Execute** → run #1 *failed* with 100 rows committed (2 batches of 50).
+7. Untick and click **Retry / resume** → run #2 inserts the remaining rows (77 with the reference plan) and reports **100 already present**, 0 duplicates. Retrying again inserts 0.
 8. **Reconcile** → **PASS** (counts, Σ lifetime value, per-row content hashes, pre-existing rows untouched). Try it after step 6 to see a FAIL with 77 missing rows.
-9. **Approve & execute → Roll back** → only the 177 migrated rows are removed; reconcile again → PASS with "no active migration".
+9. **Approve & execute → Roll back** → only the migrated rows are removed (the 8 pre-existing customers stay); reconcile again → PASS with "no active migration".
 10. **History** shows every proposal, edit, approval, dry run, execution, retry, rollback and reconciliation, with actor and payload.
 
 ## What it does
