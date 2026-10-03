@@ -1,6 +1,7 @@
 import type { VersionContent } from '@/domain/plan';
 import type { SourceRecordInput } from '@/domain/types';
 import { checkEvidence, draftToContent } from './draft';
+import { collectSignals, type ReviewSignals } from './policy';
 import type { LLMMessage, LLMProvider, LLMTurn, ToolCall } from './llm/types';
 import { SYSTEM_PROMPT } from './prompts';
 import { ALLOWED_TOOLS, isAllowedTool, runTool, TOOL_DECLS, ToolArgError } from './tools';
@@ -17,7 +18,7 @@ export interface AgentLimits { maxToolCalls: number; maxDurationMs: number; maxC
 export const DEFAULT_LIMITS: AgentLimits = { maxToolCalls: 25, maxDurationMs: 150_000, maxCorrections: 2, maxNudges: 1 };
 type Usage = { inputTokens: number; outputTokens: number };
 export type AgentOutcome =
-  | { status: 'succeeded'; content: VersionContent; usage: Usage; toolCalls: number }
+  | { status: 'succeeded'; content: VersionContent; usage: Usage; toolCalls: number; signals: ReviewSignals }
   | { status: 'failed'; error: string; usage: Usage; toolCalls: number };
 
 const MAX_RESULT_CHARS = 12_000;
@@ -41,6 +42,7 @@ export async function runAgentLoop(opts: {
   const timer = setTimeout(() => controller.abort(), limits.maxDurationMs);
   const session = opts.provider.startSession({ system: SYSTEM_PROMPT, tools: TOOL_DECLS });
   const validStepIds = new Set<number>();
+  const toolSteps: { toolName: string; args: unknown; result: unknown }[] = [];
   let step = 0, toolCalls = 0, corrections = 0, nudges = 0;
 
   const record = async (s: Omit<AgentStepRecord, 'step'>) => {
@@ -90,7 +92,7 @@ export async function runAgentLoop(opts: {
           const allIssues = content ? [...issues, ...checkEvidence(content, validStepIds)] : issues;
           if (content && !allIssues.length) {
             await record({ kind: 'tool_call', toolName: call.name, args: { summary: content.summary }, result: { accepted: true }, durationMs: 0 });
-            return { status: 'succeeded', content, usage, toolCalls };
+            return { status: 'succeeded', content, usage, toolCalls, signals: collectSignals(toolSteps) };
           }
           const id = await record({ kind: 'correction', toolName: call.name, args: null, result: { accepted: false, issues: allIssues }, durationMs: 0 });
           if (corrections >= limits.maxCorrections) {
@@ -106,6 +108,7 @@ export async function runAgentLoop(opts: {
           const output = truncate(runTool(call.name, call.args, { records: opts.records }));
           const id = await record({ kind: 'tool_call', toolName: call.name, args: call.args, result: output, durationMs: Date.now() - t0 });
           validStepIds.add(id);
+          toolSteps.push({ toolName: call.name, args: call.args, result: output });
           results.push({ call, result: { stepId: id, ...((typeof output === 'object' && output) || { value: output }) } });
         } catch (err) {
           const error = err instanceof ToolArgError ? `Invalid arguments: ${err.message}` : `Tool failed: ${(err as Error).message}`;

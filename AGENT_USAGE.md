@@ -105,3 +105,7 @@ How AI coding agents were used to build this project. The summary comes first; t
 - **Delegated:** server bootstrap (Docker, swap), writing the server `.env` (the Gemini key was copied file-to-file, never printed), compose deploy, verification.
 - **Verification on the live URL:** `/api/health` ok with database and agent configured; HTTP→HTTPS redirect with a valid Let's Encrypt certificate; a real Gemini agent run via the public API succeeded (19 tool calls, draft v1); the Playwright happy path passed against the deployment using the scripted demo agent to preserve free-tier quota.
 - **Repository hygiene (user request):** commit messages were rewritten to remove AI co-author trailers; AI usage is documented here instead.
+
+### 2026-10-03 — Live walkthrough finding
+- Running the suggested reviewer path on the live site with real Gemini showed the model marking the consent and ambiguous-date questions as optional and pre-filling its own answers, so approval was not gated on a human decision. The scripted mock never did this.
+- Fix: a deterministic review policy applied to every agent draft (`src/server/agent/policy.ts`): model-written answers are removed (answers come only from humans), questions about required fields filled with a constant default and about fields with detected ambiguous dates are forced to blocking, and labelled `[System check]` questions are added if the agent did not ask. Signals come from the agent's own tool results, not from model judgement. Tested first (`tests/unit/agent/policy.test.ts`), then re-verified on the live site.

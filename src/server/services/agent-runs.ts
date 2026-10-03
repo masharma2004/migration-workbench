@@ -3,6 +3,7 @@ import type { Question, VersionContent } from '@/domain/plan';
 import { runAgentLoop, type AgentLimits, type AgentStepRecord } from '../agent/loop';
 import type { LLMProvider } from '../agent/llm/types';
 import { MockProvider } from '../agent/llm/mock';
+import { enforceReviewPolicy } from '../agent/policy';
 import { buildProposePrompt, buildRevisePrompt } from '../agent/prompts';
 import { referenceScript } from '../agent/reference-script';
 import { getProvider } from '../agent/provider';
@@ -80,9 +81,10 @@ async function processAgentRun(runId: string, workspaceId: string, provider: LLM
     await db.transaction(async (tx) => {
       const common = { inputTokens: outcome.usage.inputTokens, outputTokens: outcome.usage.outputTokens, toolCalls: outcome.toolCalls, finishedAt: new Date() };
       if (outcome.status === 'succeeded') {
+        const reviewed = enforceReviewPolicy(outcome.content, outcome.signals);
         const content = answeredBase
-          ? { ...outcome.content, questions: mergeAnsweredQuestions(answeredBase.questions, outcome.content.questions) }
-          : outcome.content;
+          ? { ...reviewed, questions: mergeAnsweredQuestions(answeredBase.questions, reviewed.questions) }
+          : reviewed;
         const version = await createVersion(tx, { workspaceId, content, author: 'agent', parentVersionId: baseId, agentRunId: runId,
           changeNote: baseId ? 'Agent revision' : 'Agent proposal', actor: 'agent' });
         await tx.update(agentRuns).set({ ...common, status: 'succeeded', resultPlanVersionId: version.id }).where(eq(agentRuns.id, runId));
