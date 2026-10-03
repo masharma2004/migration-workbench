@@ -16,3 +16,11 @@ Running log of how AI coding agents were used to build this project. Kept up to 
   - First design allowed overwriting existing target rows implicitly — made rollback ambiguous. Changed to insert-only with `TARGET_CONFLICT` quarantine.
   - Initial hosting suggestion (SQLite on serverless) would lose data; chose Postgres on EC2 with Docker Compose.
 - **Verification:** design reviewed section by section by me before writing the spec; spec self-reviewed for contradictions (moved workspaces and per-record reconciliation from P1 to P0 because tests depend on them).
+
+### 2026-10-03 — Phase 1: foundation and domain (Tasks 1–6)
+- **Delegated:** scaffolding, the rule catalog, plan validation, dry-run engine and reconciliation — all written test-first from the implementation plan.
+- **Agent mistakes caught:**
+  - Dependency conflict: vitest 5 requires `@types/node` ≥ 22; the scaffold pinned 20. Fixed by upgrading types.
+  - `tsc --noEmit` failed on Next.js 16's generated `LayoutProps` global; the typecheck script now runs `next typegen` first.
+  - The scaffold's `.gitignore` (`.env*`) would have hidden `.env.example`; added an explicit `!.env.example`.
+- **Verification:** each test file was run and observed failing (module missing) before the implementation existed; 68/68 unit tests then passed; typecheck and production build clean.
