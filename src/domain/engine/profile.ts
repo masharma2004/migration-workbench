@@ -15,7 +15,7 @@ function shape(value: string): string {
   return value.replace(/[A-Za-zÀ-ɏ]+/g, 'A').replace(/\d/g, '9');
 }
 
-function slashDateHint(value: string): string | null {
+export function slashDateHint(value: string): string | null {
   const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(value.trim());
   if (!m) return null;
   const a = Number(m[1]);

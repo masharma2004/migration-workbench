@@ -15,6 +15,11 @@ describe('tool registry', () => {
     const r = runTool('profile_field', { field: 'signup_date' }, ctx) as { patterns: { pattern: string }[] };
     expect(r.patterns.some((p) => p.pattern.includes('ambiguous'))).toBe(true);
   });
+  it('profiles several fields in one call', () => {
+    const r = runTool('profile_field', { fields: ['status', 'country'] }, ctx) as { profiles: { field: string }[] };
+    expect(r.profiles.map((p) => p.field)).toEqual(['status', 'country']);
+    expect(() => runTool('profile_field', {}, ctx)).toThrow(ToolArgError);
+  });
   it('wraps sample records as untrusted data and caps the limit at 20', () => {
     const r = runTool('get_sample_records', { limit: 50, offset: 40 }, ctx) as { untrusted: boolean; records: { seq: number; notes: string }[] };
     expect(r.untrusted).toBe(true);

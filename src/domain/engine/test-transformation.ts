@@ -4,6 +4,7 @@ import { extractField, isSourceField } from '../schemas/source';
 import { getTargetField } from '../schemas/target';
 import type { Scalar, SourceRecordInput } from '../types';
 import type { CompiledStep } from './compile';
+import { slashDateHint } from './profile';
 import { runPipeline } from './transform';
 import { validateTargetValue } from './validate-target';
 
@@ -14,6 +15,8 @@ export interface TransformationTestResult {
   failureCodes: Record<string, number>;
   failures: { seq: number; sourceValue: string | null; code: string; message: string }[];
   samples: { seq: number; sourceValue: string | null; output: Scalar }[];
+  /** Values that passed but deserve human attention, e.g. ambiguous dates resolved by format order. */
+  warnings: { code: string; message: string; count: number; examples: string[] }[];
 }
 
 export function testTransformation(
@@ -36,7 +39,9 @@ export function testTransformation(
   });
   if (issues.length || !target) return { issues };
 
-  const result: TransformationTestResult = { total: 0, passed: 0, failed: 0, failureCodes: {}, failures: [], samples: [] };
+  const result: TransformationTestResult = { total: 0, passed: 0, failed: 0, failureCodes: {}, failures: [], samples: [], warnings: [] };
+  const usesParseDate = steps.some((s) => s.ruleName === 'parse_date');
+  const ambiguous: string[] = [];
   for (const rec of [...records].sort((a, b) => a.seq - b.seq)) {
     result.total += 1;
     const sourceValue = input.sourceField ? extractField(rec.raw, input.sourceField) : null;
@@ -48,8 +53,13 @@ export function testTransformation(
       if (result.failures.length < 5) result.failures.push({ seq: rec.seq, sourceValue, ...problem });
     } else {
       result.passed += 1;
+      if (usesParseDate && sourceValue && slashDateHint(sourceValue)?.startsWith('ambiguous')) ambiguous.push(sourceValue);
       if (result.samples.length < 5 && out.ok) result.samples.push({ seq: rec.seq, sourceValue, output: out.value });
     }
+  }
+  if (ambiguous.length) {
+    result.warnings.push({ code: 'AMBIGUOUS_DATE', count: ambiguous.length, examples: ambiguous.slice(0, 5),
+      message: `${ambiguous.length} value(s) have both day and month <= 12; they were interpreted using the first matching format in the list, which may be wrong` });
   }
   return result;
 }

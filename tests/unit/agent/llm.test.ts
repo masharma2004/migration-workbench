@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { extractText, isRetryable } from '@/server/agent/llm/gemini';
+import { extractText, isRetryable, retryDelayMs } from '@/server/agent/llm/gemini';
 import { MockProvider } from '@/server/agent/llm/mock';
 
 describe('gemini helpers', () => {
@@ -13,6 +13,14 @@ describe('gemini helpers', () => {
     expect(isRetryable({ status: 503 })).toBe(true);
     expect(isRetryable({ status: 400 })).toBe(false);
     expect(isRetryable(new Error('x'))).toBe(false);
+  });
+});
+
+describe('retryDelayMs', () => {
+  it('reads the server-provided retry delay from a Gemini 429 error', () => {
+    expect(retryDelayMs({ status: 429, message: '{"error":{"details":[{"retryDelay":"5s"}]}}' })).toBe(5000);
+    expect(retryDelayMs({ status: 429, message: 'Please retry in 5.214834079s.' })).toBe(5215);
+    expect(retryDelayMs({ status: 503, message: 'oops' })).toBeNull();
   });
 });
 

@@ -7,5 +7,5 @@ export function getProvider(): LLMProvider | null {
   if ((process.env.LLM_PROVIDER ?? 'gemini') === 'mock') return new MockProvider(referenceScript());
   const key = process.env.GEMINI_API_KEY;
   if (!key) return null;
-  return new GeminiProvider(key, process.env.GEMINI_MODEL || 'gemini-2.5-flash');
+  return new GeminiProvider(key, process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite');
 }

@@ -14,7 +14,7 @@ export interface AgentStepRecord {
   durationMs: number;
 }
 export interface AgentLimits { maxToolCalls: number; maxDurationMs: number; maxCorrections: number; maxNudges: number }
-export const DEFAULT_LIMITS: AgentLimits = { maxToolCalls: 15, maxDurationMs: 90_000, maxCorrections: 2, maxNudges: 1 };
+export const DEFAULT_LIMITS: AgentLimits = { maxToolCalls: 25, maxDurationMs: 150_000, maxCorrections: 2, maxNudges: 1 };
 type Usage = { inputTokens: number; outputTokens: number };
 export type AgentOutcome =
   | { status: 'succeeded'; content: VersionContent; usage: Usage; toolCalls: number }

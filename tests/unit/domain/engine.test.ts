@@ -115,6 +115,14 @@ describe('testTransformation', () => {
     expect(r.failures[0]).toMatchObject({ seq: 2, sourceValue: '31/31/2020' });
     expect(r.samples[0]).toMatchObject({ seq: 1, output: '2019-03-14' });
   });
+  it('warns when slash dates are ambiguous and were resolved by format order', () => {
+    const records = [good(1, { signup_date: '04/05/2019' }), good(2, { signup_date: '14/03/2019' }), good(3)];
+    const r = testTransformation(records, { sourceField: 'signup_date', targetField: 'created_on',
+      transforms: [{ rule: 'parse_date', params: { formats: ['YYYY-MM-DD', 'MM/DD/YYYY', 'DD/MM/YYYY'] } }] });
+    if ('issues' in r) throw new Error('unexpected issues');
+    expect(r.failed).toBe(0);
+    expect(r.warnings).toEqual([expect.objectContaining({ code: 'AMBIGUOUS_DATE', count: 1, examples: ['04/05/2019'] })]);
+  });
   it('also applies target constraints (enum)', () => {
     const r = testTransformation([good(1)], { sourceField: 'status', targetField: 'status', transforms: [] });
     if ('issues' in r) throw new Error('unexpected issues');

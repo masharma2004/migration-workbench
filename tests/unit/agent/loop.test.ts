@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MockProvider, type MockStep } from '@/server/agent/llm/mock';
-import { runAgentLoop, type AgentStepRecord } from '@/server/agent/loop';
+import { DEFAULT_LIMITS, runAgentLoop, type AgentStepRecord } from '@/server/agent/loop';
 import { referenceScript } from '@/server/agent/reference-script';
 import { planHash } from '@/domain/plan';
 import { seedRecordsAsInput } from '@/seed';
@@ -17,6 +17,9 @@ async function run(script: MockStep[], limits = {}) {
 const submit = (args: unknown): MockStep => ({ calls: [{ name: 'submit_plan_draft', args: args as Record<string, unknown> }] });
 
 describe('runAgentLoop', () => {
+  it('allows enough tool calls and time for a thorough real-model run', () => {
+    expect(DEFAULT_LIMITS).toMatchObject({ maxToolCalls: 25, maxDurationMs: 150_000 });
+  });
   it('completes the reference run and yields the reference plan', async () => {
     const { outcome, steps, provider } = await run(referenceScript());
     expect(outcome.status).toBe('succeeded');

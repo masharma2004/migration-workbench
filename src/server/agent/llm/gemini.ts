@@ -15,7 +15,18 @@ export function isRetryable(err: unknown): boolean {
   return status === 429 || (typeof status === 'number' && status >= 500);
 }
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+/** Delay the API asks for on 429 (e.g. "retryDelay":"5s" or "Please retry in 5.2s"), capped at 30 s. */
+export function retryDelayMs(err: unknown): number | null {
+  const e = err as { status?: number; message?: string } | null;
+  if (e?.status !== 429 || typeof e.message !== 'string') return null;
+  const m = /"retryDelay"\s*:\s*"(\d+(?:\.\d+)?)s"/.exec(e.message) ?? /retry in (\d+(?:\.\d+)?)s/i.exec(e.message);
+  return m ? Math.min(30_000, Math.ceil(Number(m[1]) * 1000)) : null;
+}
+
+const sleep = (ms: number, signal?: AbortSignal) => new Promise<void>((resolve) => {
+  const t = setTimeout(resolve, ms);
+  signal?.addEventListener('abort', () => { clearTimeout(t); resolve(); }, { once: true });
+});
 
 export class GeminiProvider implements LLMProvider {
   private readonly ai: GoogleGenAI;
@@ -37,7 +48,8 @@ export class GeminiProvider implements LLMProvider {
             functionResponse: { id: call.id, name: call.name, response: { result } } })) });
         }
         let lastErr: unknown;
-        for (let attempt = 0; attempt < 3; attempt++) {
+        const attempts = 4;
+        for (let attempt = 0; attempt < attempts; attempt++) {
           try {
             const res = await ai.models.generateContent({
               model, contents,
@@ -53,8 +65,8 @@ export class GeminiProvider implements LLMProvider {
             };
           } catch (err) {
             lastErr = err;
-            if (signal?.aborted || !isRetryable(err) || attempt === 2) break;
-            await sleep(attempt === 0 ? 1000 : 3000);
+            if (signal?.aborted || !isRetryable(err) || attempt === attempts - 1) break;
+            await sleep(retryDelayMs(err) ?? 1000 * 3 ** attempt, signal);
           }
         }
         if (signal?.aborted) throw new LLMUnavailableError('LLM call aborted (time budget exceeded)');
